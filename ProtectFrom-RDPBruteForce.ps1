@@ -7,6 +7,7 @@ He protec
 He attac
 But most important
 He put a block rule for brute-force attac
+This script check Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational Eventlog for failed logins through RDP protocol, checks for multiple events from same IP addresses, and creates rules in Advanced Firewall to block these IP addresses. Each block rule has a timestamp, so if current time - timestamp -gt $RemoveBlockRuleAfter script will remove that expired rule
 
 .INPUTS
 None
