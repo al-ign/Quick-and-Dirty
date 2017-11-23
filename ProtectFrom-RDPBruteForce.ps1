@@ -1,22 +1,46 @@
 <#
+.SYNOPSIS
+Get failed logins through RDP from Eventlog and add firewall rule to block offending IPs
+
+.DESCRIPTION
 He protec
 He attac
 But most important
 He put a block rule for brute-force attac
-#>
 
-#how deep to look in log (msec)
-$timePeriod = 900 * 1000
-#after which amount of bad logon attempts to add to list of offending IPs
-$BadLoginCount = 5
-#path to html report folder
-$HTMLReportPath = 'C:\Shares\www\Stats\RDP-Failed-Logins.html'
-#time after which offending IP FW rule will be removed (minutes)
-$FWRemoveRuleCutoff = 480
+.INPUTS
+None
+
+.OUTPUTS
+None
+
+.EXAMPLE
+.\ProtectFrom-RDPBruteForce.ps1
+Call it from PS commandline
+
+.EXAMPLE
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -file 'C:\Shares\Scripts\ProtectFrom-RDPBruteForce\ProtectFrom-RDPBruteForce.ps1' -FailedLoginCount 10
+Call this script from Task Scheduler with FailedLoginCount set to 10 attempts
+#>
+param (
+#How deep to look in the log, in minutes. Should be reasonably low, to avoid performance impact.
+[int]$timePeriod = 15,
+
+#How many failed logon attempts should be found for a single IP address to be added to the list of offending IPs
+[int]$FailedLoginCount = 5,
+
+#Time period, in minutes, after which block rule will be removed
+[int]$RemoveBlockRuleAfter = 480,
+
+#Full path for HTML report file. Report is generated only if path is given.
+[string]$HTMLReportPath
+    
+    )
+
 $xpath = @"
 <QueryList>
   <Query Id="0" Path="Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational">
-    <Select Path="Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational">*[System[(Level=3) and (EventID=140) and TimeCreated[timediff(@SystemTime) &lt;= $timePeriod]]]</Select>
+    <Select Path="Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational">*[System[(Level=3) and (EventID=140) and TimeCreated[timediff(@SystemTime) &lt;= $($timePeriod * 60 * 1000)]]]</Select>
   </Query>
 </QueryList>
 "@
@@ -27,7 +51,7 @@ if ($Events) {
     $OffendingIPs = `
         foreach ($UniqueIP in $UniqueIPs) {
             $filteredEvents =  @($events | ? {$_.ip -eq $UniqueIP.ip} | Sort-Object -Descending -Property TimeCreated)
-            if ($filteredEvents.count -ge $BadLoginCount) {
+            if ($filteredEvents.count -ge $FailedLoginCount) {
                 $obj = '' | select `
                 @{N='IP';E={
                     $UniqueIP.IP}},
@@ -56,7 +80,7 @@ $NetFWRules = @(Get-NetFirewallRule -DisplayName "RDP-BruteForce-Block" ) | sele
           [math]::Round(( ($dtNow ) - ($_.Description | get-date )).TotalMinutes,0) }},
     @{N="Guid";E={$_.Name}},
     @{N="Deleted";E={
-        if ([math]::Round(( ($dtNow ) - ($_.Description | get-date )).TotalMinutes,0) -ge $FWRemoveRuleCutoff) {
+        if ([math]::Round(( ($dtNow ) - ($_.Description | get-date )).TotalMinutes,0) -ge $RemoveBlockRuleAfter) {
             $True
             }
             else {
@@ -91,8 +115,8 @@ $NetFWRules | ? {$_.deleted} | % { Remove-NetFirewallRule -Name $_.Guid }
 if ($HTMLReportPath) {
     $HTMLBody =  "* Generated at " + (get-date) + "<br>"
     $HTMLBody += "* Time period is " + ($timePeriod / 1000) + " seconds<br>"
-    $HTMLBody += "* Current bad login count cutoff: " + $BadLoginCount + "<br>"
-    $HTMLBody += "* Current timeout for FW rule removal (minutes): " + $FWRemoveRuleCutoff + "<br>"
+    $HTMLBody += "* Current bad login count cutoff: " + $FailedLoginCount + "<br>"
+    $HTMLBody += "* Current timeout for FW rule removal (minutes): " + $RemoveBlockRuleAfter + "<br>"
 
     if ($OffendingIPs) {
         $HTMLBody += "<hr><br>Current offending IPs:<br>"
