@@ -114,17 +114,13 @@ $NetFWRules | ? {$_.deleted} | % { Remove-NetFirewallRule -Name $_.Guid }
 #Generate HTML Report
 if ($HTMLReportPath) {
     $HTMLBody =  "* Generated at " + (get-date) + "<br>"
-    $HTMLBody += "* Time period is " + ($timePeriod ) + " seconds<br>"
+    $HTMLBody += "* Time period is " + ($timePeriod * 60 ) + " seconds<br>"
     $HTMLBody += "* Current bad login count cutoff: " + $FailedLoginCount + "<br>"
     $HTMLBody += "* Current timeout for FW rule removal (minutes): " + $RemoveBlockRuleAfter + "<br>"
 
     if ($OffendingIPs) {
         $HTMLBody += "<hr><br>Current offending IPs:<br>"
         $HTMLBody += $OffendingIPs | ConvertTo-Html -Fragment
-        $HTMLBody += "<hr><br>Mikrotik CLI generation:<br>"
-        $HTMLBody += $OffendingIPs | % {
-            "/ip firewall address-list add list=`"BLACK LIST IN`" address=$($_.IP)/32" + "<br>"
-            }
         }
         else {
         $HTMLBody += "<hr><br>There is no offending IPs in log<br>"
