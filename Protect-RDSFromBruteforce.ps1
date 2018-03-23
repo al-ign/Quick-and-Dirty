@@ -19,12 +19,12 @@ None
 Call it from PS commandline
 
 .EXAMPLE
-%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -file 'C:\Shares\Scripts\ProtectFrom-RDPBruteForce\ProtectFrom-RDPBruteForce.ps1' -FailedLoginCount 10
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -file 'C:\Shares\Scripts\Protect-RDSFromBruteforce\Protect-RDSFromBruteforce.ps1' -FailedLoginCount 10
 Call this script from Task Scheduler with FailedLoginCount set to 10 attempts
 #>
 param (
 #How deep to look in the log, in minutes. Should be reasonably low, to avoid performance impact.
-[int]$timePeriod = 15,
+[int]$timePeriod = 60,
 
 #How many failed logon attempts should be found for a single IP address to be added to the list of offending IPs
 [int]$FailedLoginCount = 5,
@@ -114,7 +114,7 @@ $NetFWRules | ? {$_.deleted} | % { Remove-NetFirewallRule -Name $_.Guid }
 #Generate HTML Report
 if ($HTMLReportPath) {
     $HTMLBody =  "* Generated at " + (get-date) + "<br>"
-    $HTMLBody += "* Time period is " + ($timePeriod / 1000) + " seconds<br>"
+    $HTMLBody += "* Time period is " + ($timePeriod ) + " seconds<br>"
     $HTMLBody += "* Current bad login count cutoff: " + $FailedLoginCount + "<br>"
     $HTMLBody += "* Current timeout for FW rule removal (minutes): " + $RemoveBlockRuleAfter + "<br>"
 
